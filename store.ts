@@ -3,6 +3,23 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import { supabase } from '@/lib/supabaseClient'
+/ Manual backup trigger
+export async function uploadBackupNow() {
+  try {
+    const state = useStore.getState() // get current app data
+    const { error } = await supabase
+      .from('app_backups')
+      .insert([{ data: state }])
+
+    if (error) {
+      console.error('❌ Error uploading backup to Supabase:', error)
+    } else {
+      console.log('✅ Backup uploaded to Supabase')
+    }
+  } catch (err) {
+    console.error('❌ Unexpected error uploading backup:', err)
+  }
+}
 // Fetch latest backup from Supabase on startup
 async function fetchLatestBackup(importAllData: (data: any) => void) {
   try {
