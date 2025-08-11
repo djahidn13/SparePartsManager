@@ -1,4 +1,6 @@
 
+import { create } from "zustand"
+import { persist } from "zustand/middleware"
 import { supabase } from '@/lib/supabaseClient'
 
 // Manual backup trigger — callable from console: uploadBackupNow()
