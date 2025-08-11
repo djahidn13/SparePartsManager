@@ -975,7 +975,7 @@ export const useStore = create<Store>()(
 
       importAllData: (data) => {
 
-import { supabase } from '@/lib/supabaseClient'
+
 
 // Manual backup trigger — callable from console: uploadBackupNow()
 export async function uploadBackupNow() {
