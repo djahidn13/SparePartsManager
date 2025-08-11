@@ -936,3 +936,16 @@ export const useStore = create<Store>()(
     },
   ),
 )
+
+// Subscribe to Supabase Realtime for instant updates
+supabase
+  .channel('realtime:app_backups')
+  .on(
+    'postgres_changes',
+    { event: 'INSERT', schema: 'public', table: 'app_backups' },
+    (payload) => {
+      console.log('🔄 New backup detected from Supabase Realtime');
+      fetchLatestBackup(getState().importAllData);
+    }
+  )
+  .subscribe();
