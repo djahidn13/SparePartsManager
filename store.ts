@@ -1,76 +1,36 @@
 
-import { create } from "zustand"
-import { persist } from "zustand/middleware"
-import { supabase } from '@/lib/supabaseClient'
-
 // Manual backup trigger — callable from console: uploadBackupNow()
 export async function uploadBackupNow() {
   try {
-    const state = useStore.getState()
+    const state = useStore.getState(); // get current app data
     const payload = {
       exportDate: new Date().toISOString(),
       origin: typeof window !== "undefined" ? window.location.origin : "server",
       data: state,
-    }
-    const { error } = await supabase.from("app_backups").insert([{ data: payload }])
+    };
+    const { error } = await supabase.from("app_backups").insert([{ data: payload }]);
     if (error) {
-      console.error("❌ Error uploading backup to Supabase:", error)
+      console.error("❌ Error uploading backup to Supabase:", error);
     } else {
-      console.log("✅ Backup uploaded to Supabase")
+      console.log("✅ Backup uploaded to Supabase");
     }
   } catch (err) {
-    console.error("❌ Unexpected error uploading backup:", err)
+    console.error("❌ Unexpected error uploading backup:", err);
   }
 }
 
+// Auto backup every hour
 if (typeof window !== "undefined") {
-  // @ts-ignore
-  window.uploadBackupNow = uploadBackupNow
-
-  async function fetchLatestBackupAndImport() {
-    try {
-      const res = await supabase
-        .from("app_backups")
-        .select("data")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single()
-      if (res.data && res.data.data) {
-        useStore.getState().importAllData(res.data.data.data)
-        console.log("✅ Imported latest backup from Supabase")
-      }
-    } catch (err) {
-      console.error("❌ Error fetching backup:", err)
-    }
-  }
-
-  setTimeout(fetchLatestBackupAndImport, 500)
-
-  try {
-    supabase
-      .channel("realtime:app_backups")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "app_backups" }, () => {
-        console.log("🔄 New backup detected — importing...")
-        setTimeout(fetchLatestBackupAndImport, 500)
-      })
-      .subscribe()
-  } catch (err) {
-    console.error("⚠️ Failed to subscribe to Supabase realtime:", err)
-  }
-
-  const ONE_HOUR = 1000 * 60 * 60
-  const isLocalhost = ["localhost", "127.0.0.1"].includes(window.location.hostname)
-  if (!isLocalhost) {
-    uploadBackupNow()
-    setInterval(uploadBackupNow, ONE_HOUR)
-  }
+  setInterval(() => {
+    console.log("⏳ Running hourly backup...");
+    uploadBackupNow();
+  }, 60 * 60 * 1000); // every 1 hour
 }
 
 "use client"
 
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
-import { supabase } from '@/lib/supabaseClient'
 // Fetch latest backup from Supabase on startup
 async function fetchLatestBackup(importAllData: (data: any) => void) {
   try {
@@ -976,18 +936,7 @@ export const useStore = create<Store>()(
       importAllData: (data) => {
 
 
-
 // Manual backup trigger — callable from console: uploadBackupNow()
-export async function uploadBackupNow() {
-  try {
-    const state = useStore.getState() // get current app data
-    const { error } = await supabase
-      .from('app_backups')
-      .insert([{ data: state }])
-
-    if (error) {
-      console.error('❌ Error uploading backup to Supabase:', error)
-    } else {
       console.log('✅ Backup uploaded to Supabase')
     }
   } catch (err) {
