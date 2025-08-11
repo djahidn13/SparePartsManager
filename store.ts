@@ -3,23 +3,6 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import { supabase } from '@/lib/supabaseClient'
-/ Manual backup trigger
-export async function uploadBackupNow() {
-  try {
-    const state = useStore.getState() // get current app data
-    const { error } = await supabase
-      .from('app_backups')
-      .insert([{ data: state }])
-
-    if (error) {
-      console.error('❌ Error uploading backup to Supabase:', error)
-    } else {
-      console.log('✅ Backup uploaded to Supabase')
-    }
-  } catch (err) {
-    console.error('❌ Unexpected error uploading backup:', err)
-  }
-}
 // Fetch latest backup from Supabase on startup
 async function fetchLatestBackup(importAllData: (data: any) => void) {
   try {
@@ -923,6 +906,75 @@ export const useStore = create<Store>()(
       },
 
       importAllData: (data) => {
+
+import { supabase } from '@/lib/supabaseClient'
+
+// Manual backup trigger — callable from console: uploadBackupNow()
+export async function uploadBackupNow() {
+  try {
+    const state = useStore.getState() // get current app data
+    const { error } = await supabase
+      .from('app_backups')
+      .insert([{ data: state }])
+
+    if (error) {
+      console.error('❌ Error uploading backup to Supabase:', error)
+    } else {
+      console.log('✅ Backup uploaded to Supabase')
+    }
+  } catch (err) {
+    console.error('❌ Unexpected error uploading backup:', err)
+  }
+}
+
+// Attach to window so you can call it in console
+if (typeof window !== "undefined") {
+  // @ts-ignore
+  window.uploadBackupNow = uploadBackupNow
+}
+
+// Fetch latest backup from Supabase at startup
+async function fetchLatestBackup(importAllData: (data: any) => void) {
+  try {
+    const { data, error } = await supabase
+      .from('app_backups')
+      .select('data')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    if (error) {
+      console.error('❌ Error fetching backup from Supabase:', error)
+      return
+    }
+
+    if (data?.data) {
+      importAllData(data.data)
+      console.log('✅ Data loaded from latest Supabase backup')
+    }
+  } catch (err) {
+    console.error('❌ Unexpected error fetching backup:', err)
+  }
+}
+
+// Run on startup (browser only)
+if (typeof window !== "undefined") {
+  fetchLatestBackup(useStore.getState().importAllData)
+}
+
+// Realtime updates from Supabase
+supabase
+  .channel('realtime:app_backups')
+  .on(
+    'postgres_changes',
+    { event: 'INSERT', schema: 'public', table: 'app_backups' },
+    () => {
+      console.log('🔄 New backup detected from Supabase Realtime')
+      fetchLatestBackup(useStore.getState().importAllData)
+    }
+  )
+  .subscribe()
+
         set(() => ({
           products: data.products || [],
           clients: data.clients || [],
@@ -953,16 +1005,3 @@ export const useStore = create<Store>()(
     },
   ),
 )
-
-// Subscribe to Supabase Realtime for instant updates
-supabase
-  .channel('realtime:app_backups')
-  .on(
-    'postgres_changes',
-    { event: 'INSERT', schema: 'public', table: 'app_backups' },
-    (payload) => {
-      console.log('🔄 New backup detected from Supabase Realtime');
-      fetchLatestBackup(getState().importAllData);
-    }
-  )
-  .subscribe();
