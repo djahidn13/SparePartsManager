@@ -2,6 +2,41 @@
 
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
+import { supabase } from '@/lib/supabaseClient'
+// Fetch latest backup from Supabase on startup
+async function fetchLatestBackup(importAllData: (data: any) => void) {
+  try {
+    const { data, error } = await supabase
+      .from('app_backups') // your table name
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error) {
+      console.error('❌ Error fetching backup from Supabase:', error);
+      return;
+    }
+
+    if (data?.data) {
+      importAllData(data.data);
+      console.log('✅ Data loaded from latest Supabase backup:', data.created_at);
+    } else {
+      console.warn('⚠️ No backup data found in Supabase');
+    }
+  } catch (err) {
+    console.error('❌ Unexpected error fetching backup:', err);
+  }
+}
+
+    if (data?.data) {
+      importAllData(data.data)
+      console.log('✅ Data loaded from latest Supabase backup')
+    }
+  } catch (err) {
+    console.error('❌ Unexpected error fetching backup:', err)
+  }
+}
 
 export interface Product {
   id: string
