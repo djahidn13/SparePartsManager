@@ -7,25 +7,23 @@ import { supabase } from '@/lib/supabaseClient'
 async function fetchLatestBackup(importAllData: (data: any) => void) {
   try {
     const { data, error } = await supabase
-      .from('app_backups') // your table name
-      .select('*')
+      .from('app_backups')
+      .select('data')
       .order('created_at', { ascending: false })
       .limit(1)
-      .single();
+      .single()
 
     if (error) {
-      console.error('❌ Error fetching backup from Supabase:', error);
-      return;
+      console.error('❌ Error fetching backup from Supabase:', error)
+      return
     }
 
     if (data?.data) {
-      importAllData(data.data);
-      console.log('✅ Data loaded from latest Supabase backup:', data.created_at);
-    } else {
-      console.warn('⚠️ No backup data found in Supabase');
+      importAllData(data.data)
+      console.log('✅ Data loaded from latest Supabase backup')
     }
   } catch (err) {
-    console.error('❌ Unexpected error fetching backup:', err);
+    console.error('❌ Unexpected error fetching backup:', err)
   }
 }
 
@@ -408,6 +406,11 @@ const defaultUsers: User[] = [
 
 export const useStore = create<Store>()(
   persist(
+  // Automatically fetch latest backup when store is initialized
+  fetchLatestBackup((data) => {
+    // Replace persisted state with fresh data from Supabase
+    useStore.setState({ ...useStore.getState(), ...data });
+  });
     (set, get) => ({
       products: sampleProducts,
       clients: sampleClients,
