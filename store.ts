@@ -406,11 +406,6 @@ const defaultUsers: User[] = [
 
 export const useStore = create<Store>()(
   persist(
-  // Automatically fetch latest backup when store is initialized
-  fetchLatestBackup((data) => {
-    // Replace persisted state with fresh data from Supabase
-    useStore.setState({ ...useStore.getState(), ...data });
-  });
     (set, get) => ({
       products: sampleProducts,
       clients: sampleClients,
@@ -941,3 +936,14 @@ export const useStore = create<Store>()(
     },
   ),
 )
+
+// Auto-refresh: fetch latest backup on app start
+fetchLatestBackup((data) => {
+  // Overwrite persisted state with latest Supabase data
+  try {
+    useStore.setState({ ...useStore.getState(), ...data });
+    console.log('🔄 Store updated with latest backup');
+  } catch (err) {
+    console.error('❌ Failed to update store with latest backup:', err);
+  }
+});
