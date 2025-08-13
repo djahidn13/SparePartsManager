@@ -29,15 +29,6 @@ async function fetchLatestBackup(importAllData: (data: any) => void) {
   }
 }
 
-    if (data?.data) {
-      importAllData(data.data)
-      console.log('✅ Data loaded from latest Supabase backup')
-    }
-  } catch (err) {
-    console.error('❌ Unexpected error fetching backup:', err)
-  }
-}
-
 export interface Product {
   id: string
   reference: string
