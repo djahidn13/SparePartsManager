@@ -462,21 +462,18 @@ export const useStore = create<Store>()(
         }, 0);
           products: [...state.products, { ...product, id }],
         }))
-});
       },
 
       updateProduct: (id, updates) => {
         set((state) => ({
           products: state.products.map((p) => (p.id === id ? { ...p, ...updates } : p)),
         }))
-});
       },
 
       deleteProduct: (id) => {
         set((state) => ({
           products: state.products.filter((p) => p.id !== id),
         }))
-});
       },
 
       replaceAllProducts: (newProducts) => {
@@ -498,21 +495,18 @@ export const useStore = create<Store>()(
         set((state) => ({
           clients: [...state.clients, { ...client, id }],
         }))
-});
       },
 
       updateClient: (id, updates) => {
         set((state) => ({
           clients: state.clients.map((c) => (c.id === id ? { ...c, ...updates } : c)),
         }))
-});
       },
 
       deleteClient: (id) => {
         set((state) => ({
           clients: state.clients.filter((c) => c.id !== id),
         }))
-});
       },
 
       // Actions pour les fournisseurs
@@ -521,21 +515,18 @@ export const useStore = create<Store>()(
         set((state) => ({
           suppliers: [...state.suppliers, { ...supplier, id }],
         }))
-});
       },
 
       updateSupplier: (id, updates) => {
         set((state) => ({
           suppliers: state.suppliers.map((s) => (s.id === id ? { ...s, ...updates } : s)),
         }))
-});
       },
 
       deleteSupplier: (id) => {
         set((state) => ({
           suppliers: state.suppliers.filter((s) => s.id !== id),
         }))
-});
       },
 
       // Actions pour les achats
@@ -584,7 +575,6 @@ export const useStore = create<Store>()(
             movements: newMovements,
           }
         })
-});
       },
 
       updatePurchase: (id, updates) => {
@@ -653,7 +643,6 @@ export const useStore = create<Store>()(
             movements: newMovements,
           }
         })
-});
       },
 
       deletePurchase: (id) => {
@@ -697,7 +686,6 @@ export const useStore = create<Store>()(
             movements: newMovements,
           }
         })
-});
       },
 
       // Actions pour les ventes
@@ -733,7 +721,6 @@ export const useStore = create<Store>()(
             movements: [...state.movements, ...newMovements],
           }
         })
-});
       },
 
       deleteSale: (id) => {
@@ -768,7 +755,6 @@ export const useStore = create<Store>()(
             movements: [...state.movements, ...restockMovements],
           }
         })
-});
       },
 
       updateSale: (id, updates) => {
@@ -822,7 +808,6 @@ export const useStore = create<Store>()(
             movements: newMovements,
           }
         })
-});
       },
 
       // Actions pour les mouvements
@@ -831,7 +816,6 @@ export const useStore = create<Store>()(
         set((state) => ({
           movements: [...state.movements, { ...movement, id }],
         }))
-});
       },
 
       // Actions pour les comptes
@@ -840,21 +824,18 @@ export const useStore = create<Store>()(
         set((state) => ({
           accounts: [...state.accounts, { ...account, id }],
         }))
-});
       },
 
       updateAccount: (id, updates) => {
         set((state) => ({
           accounts: state.accounts.map((a) => (a.id === id ? { ...a, ...updates } : a)),
         }))
-});
       },
 
       deleteAccount: (id) => {
         set((state) => ({
           accounts: state.accounts.filter((a) => a.id !== id),
         }))
-});
       },
 
       transferBetweenAccounts: (transfer) => {
@@ -879,7 +860,6 @@ export const useStore = create<Store>()(
             transfers: [...state.transfers, { id, fromAccountId, toAccountId, amount, date, description }],
           }
         })
-});
       },
 
       getAccountById: (id) => {
@@ -901,7 +881,6 @@ export const useStore = create<Store>()(
             },
             users: state.users.map((u) => (u.id === user.id ? { ...u, last_login: new Date().toISOString() } : u)),
           }))
-});
           return true
         }
         return false
@@ -926,21 +905,18 @@ export const useStore = create<Store>()(
         set((state) => ({
           users: [...state.users, newUser],
         }))
-});
       },
 
       updateUser: (id, updates) => {
         set((state) => ({
           users: state.users.map((u) => (u.id === id ? { ...u, ...updates } : u)),
         }))
-});
       },
 
       deleteUser: (id) => {
         set((state) => ({
           users: state.users.filter((u) => u.id !== id),
         }))
-});
       },
 
       hasPermission: (permission) => {
@@ -1049,47 +1025,3 @@ fetchLatestBackup((data) => {
     console.error('❌ Failed to update store with latest backup:', err);
   }
 });
-
-
-// ====================== AUTO-BACKUP LOGIC (Browser-safe) ======================
-
-// Keep a reference to backup directory handle (set by UI like settings-module.tsx)
-let globalBackupDirHandle: FileSystemDirectoryHandle | null = null;
-
-// Allow UI to set backup folder from anywhere
-export function setGlobalBackupDirHandle(handle: FileSystemDirectoryHandle) {
-  globalBackupDirHandle = handle;
-}
-
-// Function to save backup file using File System Access API
-async function saveBackupBrowser(state: any) {
-  if (!globalBackupDirHandle) return;
-  try {
-    const payload = {
-      products: state.products,
-      clients: state.clients,
-      suppliers: state.suppliers,
-      sales: state.sales,
-      purchases: state.purchases,
-      movements: state.movements,
-      accounts: state.accounts,
-      transfers: state.transfers,
-      exportDate: new Date().toISOString(),
-    };
-
-    const fileName = `autoparts-backup-${new Date().toISOString().split('T')[0]}.json`;
-    const fileHandle = await globalBackupDirHandle.getFileHandle(fileName, { create: true });
-    const writable = await fileHandle.createWritable();
-    await writable.write(JSON.stringify(payload, null, 2));
-    await writable.close();
-    console.log("Auto-backup saved:", fileName);
-  } catch (e) {
-    console.error("Error during auto-backup (browser):", e);
-  }
-}
-
-// Subscribe to store changes
-useStore.subscribe((state) => {
-  saveBackupBrowser(state);
-});
-// ==================== END AUTO-BACKUP LOGIC ====================
