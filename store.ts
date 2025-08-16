@@ -3,6 +3,9 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import { supabase } from '@/lib/supabaseClient'
+// BACKUP: File System handle type (fallback)
+type FSDirHandle = any
+
 // Fetch latest backup from Supabase on startup
 async function fetchLatestBackup(importAllData: (data: any) => void) {
   try {
@@ -154,6 +157,10 @@ interface Store {
   transfers: Transfer[]
   users: User[]
   auth: AuthState
+
+  // BACKUP
+  backupDirHandle: FSDirHandle | null
+  setBackupDirHandle: (handle: FSDirHandle) => void
 
   // Actions pour les produits
   addProduct: (product: Omit<Product, "id">) => void
@@ -420,6 +427,11 @@ export const useStore = create<Store>()(
         isAuthenticated: false,
         currentUser: null,
       },
+
+      // BACKUP
+      backupDirHandle: null,
+      setBackupDirHandle: (handle: FSDirHandle) => set({ backupDirHandle: handle }),
+
 
       // Actions pour les produits
       addProduct: (product) => {
@@ -936,6 +948,49 @@ export const useStore = create<Store>()(
     },
   ),
 )
+
+
+// BACKUP: auto backup helper
+async function autoBackup(getState: () => any) {
+  const {
+    backupDirHandle,
+    products, clients, suppliers, sales, purchases, movements, accounts, transfers, users, auth
+  } = getState();
+  if (!backupDirHandle) return;
+  if (!(auth && auth.currentUser && auth.currentUser.role === 'admin')) return;
+
+  try {
+    const payload = {
+      products, clients, suppliers, sales, purchases, movements, accounts, transfers, users,
+      exportDate: new Date().toISOString(),
+    };
+    const fileName = `autoparts-backup-${new Date().toISOString().split("T")[0]}.json`;
+    const fileHandle = await backupDirHandle.getFileHandle(fileName, { create: true });
+    const writable = await fileHandle.createWritable();
+    await writable.write(JSON.stringify(payload, null, 2));
+    await writable.close();
+    console.log("💾 Auto-backup écrit:", fileName);
+  } catch (err) {
+    console.error("❌ Auto-backup error:", err);
+  }
+}
+
+// BACKUP: subscribe to state changes on client to trigger backups
+if (typeof window !== "undefined") {
+  const selectData = (s: any) => ({
+    products: s.products,
+    clients: s.clients,
+    suppliers: s.suppliers,
+    sales: s.sales,
+    purchases: s.purchases,
+    movements: s.movements,
+    accounts: s.accounts,
+    transfers: s.transfers,
+  });
+  useStore.subscribe(selectData, () => {
+    autoBackup(useStore.getState);
+  });
+}
 
 // Auto-refresh: fetch latest backup on app start
 fetchLatestBackup((data) => {
