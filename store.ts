@@ -947,37 +947,3 @@ fetchLatestBackup((data) => {
     console.error('❌ Failed to update store with latest backup:', err);
   }
 });
-
-
-// ================= Auto Backup Logic =================
-
-// Save store data as JSON file in selected backup folder
-async function scheduleBackup(state: any) {
-  try {
-    const dirHandle = (window as any).backupDirHandle
-    if (!dirHandle) return
-
-    const now = new Date()
-    const dateStr = now.toISOString().split("T")[0] // YYYY-MM-DD
-    const fileName = `autoparts-backup-${dateStr}.json`
-
-    const fileHandle = await dirHandle.getFileHandle(fileName, { create: true })
-    const writable = await fileHandle.createWritable()
-    await writable.write(JSON.stringify(state, null, 2))
-    await writable.close()
-
-    console.log("✅ Auto-backup saved:", fileName)
-  } catch (err) {
-    console.error("❌ Auto-backup failed:", err)
-  }
-}
-
-
-// Subscribe to state changes and trigger backup
-import { useStore } from "./store" // adjust import if needed
-
-if (typeof window !== "undefined") {
-  useStore.subscribe((state) => {
-    scheduleBackup(state)
-  })
-}
