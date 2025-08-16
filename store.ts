@@ -455,23 +455,26 @@ export const useStore = create<Store>()(
       // Actions pour les produits
       addProduct: (product) => {
         const id = Date.now().toString()
-        set((state) => ({
+        set((state) => {
         // Emit auto-backup event
         setTimeout(() => {
           try { backupEmitter.emit('backup', getBackupData()) } catch (err) { console.error('Backup emit error', err) }
         }, 0);
+    return {
           products: [...state.products, { ...product, id }],
         }))
       },
 
       updateProduct: (id, updates) => {
-        set((state) => ({
+        set((state) => {
+    return {
           products: state.products.map((p) => (p.id === id ? { ...p, ...updates } : p)),
         }))
       },
 
       deleteProduct: (id) => {
-        set((state) => ({
+        set((state) => {
+    return {
           products: state.products.filter((p) => p.id !== id),
         }))
       },
@@ -492,19 +495,19 @@ export const useStore = create<Store>()(
       // Actions pour les clients
       addClient: (client) => {
         const id = Date.now().toString()
-        set((state) => ({
+        set((state) => {
           clients: [...state.clients, { ...client, id }],
         }))
       },
 
       updateClient: (id, updates) => {
-        set((state) => ({
+        set((state) => {
           clients: state.clients.map((c) => (c.id === id ? { ...c, ...updates } : c)),
         }))
       },
 
       deleteClient: (id) => {
-        set((state) => ({
+        set((state) => {
           clients: state.clients.filter((c) => c.id !== id),
         }))
       },
@@ -512,19 +515,19 @@ export const useStore = create<Store>()(
       // Actions pour les fournisseurs
       addSupplier: (supplier) => {
         const id = Date.now().toString()
-        set((state) => ({
+        set((state) => {
           suppliers: [...state.suppliers, { ...supplier, id }],
         }))
       },
 
       updateSupplier: (id, updates) => {
-        set((state) => ({
+        set((state) => {
           suppliers: state.suppliers.map((s) => (s.id === id ? { ...s, ...updates } : s)),
         }))
       },
 
       deleteSupplier: (id) => {
-        set((state) => ({
+        set((state) => {
           suppliers: state.suppliers.filter((s) => s.id !== id),
         }))
       },
@@ -813,7 +816,7 @@ export const useStore = create<Store>()(
       // Actions pour les mouvements
       addMovement: (movement) => {
         const id = Date.now().toString()
-        set((state) => ({
+        set((state) => {
           movements: [...state.movements, { ...movement, id }],
         }))
       },
@@ -821,19 +824,19 @@ export const useStore = create<Store>()(
       // Actions pour les comptes
       addAccount: (account) => {
         const id = Date.now().toString()
-        set((state) => ({
+        set((state) => {
           accounts: [...state.accounts, { ...account, id }],
         }))
       },
 
       updateAccount: (id, updates) => {
-        set((state) => ({
+        set((state) => {
           accounts: state.accounts.map((a) => (a.id === id ? { ...a, ...updates } : a)),
         }))
       },
 
       deleteAccount: (id) => {
-        set((state) => ({
+        set((state) => {
           accounts: state.accounts.filter((a) => a.id !== id),
         }))
       },
@@ -874,7 +877,7 @@ export const useStore = create<Store>()(
         console.log("All users:", get().users) // Debug log
 
         if (user) {
-          set((state) => ({
+          set((state) => {
             auth: {
               isAuthenticated: true,
               currentUser: user,
@@ -902,19 +905,19 @@ export const useStore = create<Store>()(
           id,
           created_date: new Date().toISOString().split("T")[0],
         }
-        set((state) => ({
+        set((state) => {
           users: [...state.users, newUser],
         }))
       },
 
       updateUser: (id, updates) => {
-        set((state) => ({
+        set((state) => {
           users: state.users.map((u) => (u.id === id ? { ...u, ...updates } : u)),
         }))
       },
 
       deleteUser: (id) => {
-        set((state) => ({
+        set((state) => {
           users: state.users.filter((u) => u.id !== id),
         }))
       },
