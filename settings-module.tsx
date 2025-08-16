@@ -769,6 +769,19 @@ export default function SettingsModule() {
                     </label>
                   </Button>
                 </div>
+
+        {/* ✅ New button to select & show backup folder */}
+        <Button
+          onClick={selectBackupFolder}
+          variant="secondary"
+          className="h-20 flex-col w-full"
+        >
+          <Folder className="w-6 h-6 mb-2" />
+          Dossier de sauvegarde
+          <span className="text-xs opacity-75 truncate max-w-[200px]">
+            {backupDirName || "Aucun dossier sélectionné"}
+          </span>
+        </Button>
               </div>
             </CardContent>
           </Card>
