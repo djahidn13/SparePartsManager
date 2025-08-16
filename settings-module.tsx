@@ -21,7 +21,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { , AlertTriangle, CheckCircle, Clock, Database, Download, Edit, Eye, EyeOff, Folder, Info, Key, Plus, Settings, Shield, Trash2, Upload, UserCheck, Users } from "lucide-react"
+import { AlertTriangle, CheckCircle, Clock, Database, Download, Edit, Eye, EyeOff, Folder, Info, Key, Plus, Settings, Shield, Trash2, Upload, UserCheck, Users } from "lucide-react"
 import { useStore } from "@/store"
 import { supabase } from '@/lib/supabaseClient'
 
