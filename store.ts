@@ -455,14 +455,15 @@ export const useStore = create<Store>()(
       // Actions pour les produits
       addProduct: (product) => {
         const id = Date.now().toString()
-        set((state) => ({
+        set((state) => {
         // Emit auto-backup event
         setTimeout(() => {
           try { backupEmitter.emit('backup', getBackupData()) } catch (err) { console.error('Backup emit error', err) }
         }, 0);
+        return {  
           products: [...state.products, { ...product, id }],
-        }))
-      },
+        };
+      }),
 
       updateProduct: (id, updates) => {
         set((state) => ({
