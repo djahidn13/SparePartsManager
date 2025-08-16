@@ -1,6 +1,7 @@
 "use client"
 
 import { create } from "zustand"
+import { saveBackupFile } from "@/lib/backup"
 import { persist } from "zustand/middleware"
 import { supabase } from '@/lib/supabaseClient'
 // Fetch latest backup from Supabase on startup
@@ -425,20 +426,23 @@ export const useStore = create<Store>()(
       addProduct: (product) => {
         const id = Date.now().toString()
         set((state) => ({
-          products: [...state.products, { ...product, id }],
+          products: [...state.products, { ...product, id   saveBackupFile(get())
+}],
         }))
       },
 
       updateProduct: (id, updates) => {
         set((state) => ({
-          products: state.products.map((p) => (p.id === id ? { ...p, ...updates } : p)),
+          products: state.products.map((p) => (p.id === id ? { ...p, ...updates   saveBackupFile(get())
+} : p)),
         }))
       },
 
       deleteProduct: (id) => {
         set((state) => ({
           products: state.products.filter((p) => p.id !== id),
-        }))
+          saveBackupFile(get())
+}))
       },
 
       replaceAllProducts: (newProducts) => {
@@ -502,7 +506,8 @@ export const useStore = create<Store>()(
           id,
           montant_paye: purchase.montant_paye || 0,
           reste_a_payer: purchase.reste_a_payer || purchase.total || 0,
-        }
+          saveBackupFile(get())
+}
 
         set((state) => {
           let updatedProducts = state.products
@@ -547,7 +552,8 @@ export const useStore = create<Store>()(
           const existingPurchase = state.purchases.find((p) => p.id === id)
           if (!existingPurchase) return state
 
-          const updatedPurchase = { ...existingPurchase, ...updates }
+          const updatedPurchase = { ...existingPurchase, ...updates   saveBackupFile(get())
+}
           let updatedProducts = state.products
           let newMovements = state.movements
 
@@ -627,7 +633,8 @@ export const useStore = create<Store>()(
                   quantite_disponible: Math.max(0, product.quantite_disponible - purchaseItem.quantite),
                   valeur_stock:
                     Math.max(0, product.quantite_disponible - purchaseItem.quantite) * product.prix_achat_ht,
-                }
+                  saveBackupFile(get())
+}
               }
               return product
             })
@@ -656,7 +663,8 @@ export const useStore = create<Store>()(
       // Actions pour les ventes
       addSale: (sale) => {
         const id = Date.now().toString()
-        const newSale = { ...sale, id }
+        const newSale = { ...sale, id   saveBackupFile(get())
+}
 
         set((state) => {
           const updatedProducts = state.products.map((product) => {
@@ -699,7 +707,8 @@ export const useStore = create<Store>()(
               return {
                 ...product,
                 quantite_disponible: product.quantite_disponible + saleItem.quantite,
-              }
+                saveBackupFile(get())
+}
             }
             return product
           })
@@ -733,7 +742,8 @@ export const useStore = create<Store>()(
               return {
                 ...product,
                 quantite_disponible: product.quantite_disponible + originalItem.quantite,
-              }
+                saveBackupFile(get())
+}
             }
             return product
           })
@@ -779,7 +789,8 @@ export const useStore = create<Store>()(
       addMovement: (movement) => {
         const id = Date.now().toString()
         set((state) => ({
-          movements: [...state.movements, { ...movement, id }],
+          movements: [...state.movements, { ...movement, id   saveBackupFile(get())
+}],
         }))
       },
 
@@ -787,20 +798,23 @@ export const useStore = create<Store>()(
       addAccount: (account) => {
         const id = Date.now().toString()
         set((state) => ({
-          accounts: [...state.accounts, { ...account, id }],
+          accounts: [...state.accounts, { ...account, id   saveBackupFile(get())
+}],
         }))
       },
 
       updateAccount: (id, updates) => {
         set((state) => ({
-          accounts: state.accounts.map((a) => (a.id === id ? { ...a, ...updates } : a)),
+          accounts: state.accounts.map((a) => (a.id === id ? { ...a, ...updates   saveBackupFile(get())
+} : a)),
         }))
       },
 
       deleteAccount: (id) => {
         set((state) => ({
           accounts: state.accounts.filter((a) => a.id !== id),
-        }))
+          saveBackupFile(get())
+}))
       },
 
       transferBetweenAccounts: (transfer) => {
