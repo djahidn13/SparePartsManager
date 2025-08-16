@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,25 +21,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import {
-  Settings,
-  Database,
-  Users,
-  Shield,
-  Download,
-  Upload,
-  Trash2,
-  Plus,
-  Edit,
-  Eye,
-  EyeOff,
-  AlertTriangle,
-  CheckCircle,
-  Info,
-  Key,
-  Clock,
-  UserCheck,
-} from "lucide-react"
+import { , AlertTriangle, CheckCircle, Clock, Database, Download, Edit, Eye, EyeOff, Folder, Info, Key, Plus, Settings, Shield, Trash2, Upload, UserCheck, Users } from "lucide-react"
 import { useStore } from "@/store"
 import { supabase } from '@/lib/supabaseClient'
 
@@ -63,52 +45,6 @@ export default function SettingsModule() {
   } = useStore()
 
   const currentUser = auth.currentUser
-  // === Sauvegarde locale automatique ===
-  const [backupDirHandle, setBackupDirHandle] = useState<FileSystemDirectoryHandle | null>(null)
-
-  const selectBackupFolder = async () => {
-    try {
-      const handle = await (window as any).showDirectoryPicker()
-      setBackupDirHandle(handle)
-      localStorage.setItem("backupDir", handle.name) // simple persistence info
-      alert("Dossier de sauvegarde sélectionné: " + handle.name)
-    } catch (err) {
-      console.error("Erreur sélection dossier", err)
-    }
-  }
-
-  const writeBackupFile = async () => {
-    if (!backupDirHandle) return
-    try {
-      const data = {
-        products,
-        clients,
-        suppliers,
-        sales,
-        purchases,
-        movements,
-        accounts,
-        transfers,
-        users,
-        exportDate: new Date().toISOString(),
-      }
-      const fileName = `autoparts-backup-${new Date().toISOString().split("T")[0]}.json`
-      const fileHandle = await backupDirHandle.getFileHandle(fileName, { create: true })
-      const writable = await fileHandle.createWritable()
-      await writable.write(JSON.stringify(data, null, 2))
-      await writable.close()
-      console.log("Sauvegarde auto écrasée dans:", fileName)
-    } catch (err) {
-      console.error("Erreur écriture auto-backup:", err)
-    }
-  }
-
-  useEffect(() => {
-    if (isAdmin && backupDirHandle) {
-      writeBackupFile()
-    }
-  }, [products, clients, suppliers, sales, purchases, movements, accounts, transfers])
-
   const isAdmin = currentUser?.role === "admin"
 
   // User management state
@@ -138,6 +74,56 @@ export default function SettingsModule() {
   // Data management state
   const [confirmPassword, setConfirmPassword] = useState("")
   const [showClearDialog, setShowClearDialog] = useState(false)
+  // === Sauvegarde automatique (dossier local via File System Access API) ===
+  const [backupDirHandle, setBackupDirHandle] = useState<FileSystemDirectoryHandle | null>(null)
+  const [backupDirName, setBackupDirName] = useState<string>("")
+
+  // L'utilisateur choisit "D:\\autoparts-backup" (ou autre). Le handle n'est pas sérialisable,
+  // donc il faudra re-sélectionner après un rechargement.
+  const selectBackupFolder = async () => {
+    try {
+      const handle = await (window as any).showDirectoryPicker()
+      setBackupDirHandle(handle)
+      setBackupDirName(handle.name || "Dossier sélectionné")
+      alert("Dossier de sauvegarde sélectionné: " + (handle.name || ""))
+    } catch (e) {
+      console.error("Sélection du dossier annulée/échouée:", e)
+    }
+  }
+
+  const writeAutoBackup = async () => {
+    if (!backupDirHandle) return
+    try {
+      const state = useStore.getState()
+      const payload = {
+        products: state.products,
+        clients: state.clients,
+        suppliers: state.suppliers,
+        sales: state.sales,
+        purchases: state.purchases,
+        movements: state.movements,
+        accounts: state.accounts,
+        transfers: state.transfers,
+        exportDate: new Date().toISOString(),
+      }
+      const fileName = `autoparts-backup-${new Date().toISOString().split("T")[0]}.json`
+      const fileHandle = await backupDirHandle.getFileHandle(fileName, { create: true })
+      const writable = await fileHandle.createWritable()
+      await writable.write(JSON.stringify(payload, null, 2))
+      await writable.close()
+      console.log("Sauvegarde auto écrite:", fileName)
+    } catch (e) {
+      console.error("Erreur d'écriture de la sauvegarde auto:", e)
+    }
+  }
+
+  // Déclenche une sauvegarde après tout changement de données, si un dossier a été choisi.
+  useEffect(() => {
+    if (!backupDirHandle) return
+    writeAutoBackup()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products, clients, suppliers, sales, purchases, movements, accounts, transfers, backupDirHandle])
+
 
   // Security settings state (admin only)
   const [securitySettings, setSecuritySettings] = useState({
@@ -726,7 +712,13 @@ export default function SettingsModule() {
                       <div className="flex items-center gap-2 text-green-700">
                         <CheckCircle className="w-5 h-5" />
                         <span className="font-medium">Sécurisé</span>
-                      </div>
+                      
+              <Button onClick={selectBackupFolder} variant="secondary" className="h-24 flex flex-col items-center justify-center">
+                <Folder className="w-6 h-6 mb-1" />
+                <span>Choisir le dossier auto‑backup</span>
+                <span className="text-xs text-muted-foreground truncate max-w-[200px]">{backupDirName || "Aucun"}</span>
+              </Button>
+</div>
                       <p className="text-sm text-green-600 mt-1">Système protégé</p>
                     </div>
                     <div className="bg-blue-50 p-4 rounded-lg">
@@ -761,7 +753,7 @@ export default function SettingsModule() {
               <CardDescription>Exportez et importez vos données</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Button onClick={handleExportData} className="h-20 flex-col">
                   <Download className="w-6 h-6 mb-2" />
                   Exporter les données
