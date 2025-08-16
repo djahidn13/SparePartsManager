@@ -41,7 +41,7 @@ import {
   UserCheck,
 } from "lucide-react"
 import { useStore } from "@/store"
-import { requestBackupFolder, saveBackupFile } from "@/lib/backup"
+import { requestBackupFolder } from "@/lib/backup"
 import { Folder } from "lucide-react"
 import { supabase } from '@/lib/supabaseClient'
 
@@ -159,24 +159,18 @@ export default function SettingsModule() {
     alert("Mot de passe modifié avec succès")
   }
 
-  const handleExportData = async () => {
-  const dataStr = JSON.stringify(store, null, 2)
-  try {
-    const success = await saveBackupFile(store)
-    if (!success) {
-      // fallback to download if no folder selected
-      const blob = new Blob([dataStr], { type: "application/json" })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `autoparts-backup-${new Date().toISOString().split("T")[0]}.json`
-      a.click()
-      URL.revokeObjectURL(url)
+  const handleExportData = () => {
+    const data = {
+      products,
+      clients,
+      suppliers,
+      sales,
+      purchases,
+      movements,
+      accounts,
+      transfers,
+      exportDate: new Date().toISOString(),
     }
-  } catch (err) {
-    console.error("Backup export failed", err)
-  }
-}
 
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
     const url = URL.createObjectURL(blob)
@@ -724,37 +718,37 @@ export default function SettingsModule() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-  <Button onClick={handleExportData} className="h-20 flex-col">
-    <Download className="w-6 h-6 mb-2" />
-    Exporter les données
-    <span className="text-xs opacity-75">Télécharger une sauvegarde JSON</span>
-  </Button>
+    <Button onClick={handleExportData} className="h-20 flex-col">
+      <Download className="w-6 h-6 mb-2" />
+      Exporter les données
+      <span className="text-xs opacity-75">Télécharger une sauvegarde JSON</span>
+    </Button>
 
-  <div>
-    <input type="file" accept=".json" onChange={handleImportData} className="hidden" id="import-file" />
-    <Button asChild className="h-20 flex-col w-full">
-      <label htmlFor="import-file" className="cursor-pointer">
-        <Upload className="w-6 h-6 mb-2" />
-        Importer les données
-        <span className="text-xs opacity-75">Restaurer depuis un fichier JSON</span>
-      </label>
+    <div>
+      <input type="file" accept=".json" onChange={handleImportData} className="hidden" id="import-file" />
+      <Button asChild className="h-20 flex-col w-full">
+        <label htmlFor="import-file" className="cursor-pointer">
+          <Upload className="w-6 h-6 mb-2" />
+          Importer les données
+          <span className="text-xs opacity-75">Restaurer depuis un fichier JSON</span>
+        </label>
+      </Button>
+    </div>
+
+    <Button
+      onClick={async () => {
+        const dir = await requestBackupFolder()
+        if (dir) {
+          alert("✅ Dossier de sauvegarde sélectionné avec succès ! Toutes les modifications seront automatiquement enregistrées dans ce dossier.")
+        }
+      }}
+      className="h-20 flex-col bg-green-600 hover:bg-green-700 text-white"
+    >
+      <Folder className="w-6 h-6 mb-2" />
+      Sélectionner le dossier de sauvegarde
+      <span className="text-xs opacity-75">Ex: D:\autoparts-backup</span>
     </Button>
   </div>
-
-  <Button
-    onClick={async () => {
-      const dir = await requestBackupFolder()
-      if (dir) {
-        alert("✅ Dossier de sauvegarde sélectionné avec succès ! Toutes les modifications seront automatiquement enregistrées dans ce dossier.")
-      }
-    }}
-    className="h-20 flex-col bg-green-600 hover:bg-green-700 text-white"
-  >
-    <Folder className="w-6 h-6 mb-2" />
-    Sélectionner le dossier de sauvegarde
-    <span className="text-xs opacity-75">Ex: D:\autoparts-backup</span>
-  </Button>
-</div>
               </div>
             </CardContent>
           </Card>
