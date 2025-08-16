@@ -63,6 +63,52 @@ export default function SettingsModule() {
   } = useStore()
 
   const currentUser = auth.currentUser
+  // === Sauvegarde locale automatique ===
+  const [backupDirHandle, setBackupDirHandle] = useState<FileSystemDirectoryHandle | null>(null)
+
+  const selectBackupFolder = async () => {
+    try {
+      const handle = await (window as any).showDirectoryPicker()
+      setBackupDirHandle(handle)
+      localStorage.setItem("backupDir", handle.name) // simple persistence info
+      alert("Dossier de sauvegarde sélectionné: " + handle.name)
+    } catch (err) {
+      console.error("Erreur sélection dossier", err)
+    }
+  }
+
+  const writeBackupFile = async () => {
+    if (!backupDirHandle) return
+    try {
+      const data = {
+        products,
+        clients,
+        suppliers,
+        sales,
+        purchases,
+        movements,
+        accounts,
+        transfers,
+        users,
+        exportDate: new Date().toISOString(),
+      }
+      const fileName = `autoparts-backup-${new Date().toISOString().split("T")[0]}.json`
+      const fileHandle = await backupDirHandle.getFileHandle(fileName, { create: true })
+      const writable = await fileHandle.createWritable()
+      await writable.write(JSON.stringify(data, null, 2))
+      await writable.close()
+      console.log("Sauvegarde auto écrasée dans:", fileName)
+    } catch (err) {
+      console.error("Erreur écriture auto-backup:", err)
+    }
+  }
+
+  useEffect(() => {
+    if (isAdmin && backupDirHandle) {
+      writeBackupFile()
+    }
+  }, [products, clients, suppliers, sales, purchases, movements, accounts, transfers])
+
   const isAdmin = currentUser?.role === "admin"
 
   // User management state
