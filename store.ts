@@ -411,6 +411,25 @@ const defaultUsers: User[] = [
   },
 ]
 
+
+// Generate JSON backup of current state
+const getBackupData = () => {
+  const data = {
+    products: get().products,
+    clients: get().clients,
+    suppliers: get().suppliers,
+    sales: get().sales,
+    purchases: get().purchases,
+    movements: get().movements,
+    accounts: get().accounts,
+    transfers: get().transfers,
+    users: get().users,
+    exportDate: new Date().toISOString(),
+  }
+  return JSON.stringify(data, null, 2)
+}
+
+
 export const useStore = create<Store>()(
   persist(
     (set, get) => ({
@@ -437,6 +456,10 @@ export const useStore = create<Store>()(
       addProduct: (product) => {
         const id = Date.now().toString()
         set((state) => ({
+        // Emit auto-backup event
+        setTimeout(() => {
+          try { backupEmitter.emit('backup', getBackupData()) } catch (err) { console.error('Backup emit error', err) }
+        }, 0);
           products: [...state.products, { ...product, id }],
         }))
       },
@@ -1002,3 +1025,47 @@ fetchLatestBackup((data) => {
     console.error('❌ Failed to update store with latest backup:', err);
   }
 });
+
+
+// ====================== AUTO-BACKUP LOGIC ======================
+import { writeFile } from 'fs';
+import path from 'path';
+
+// Path to backup folder
+const BACKUP_DIR = 'D:\\autoparts-backup';
+
+// Function to save backup file
+function saveBackup(state: any) {
+  try {
+    const payload = {
+      products: state.products,
+      clients: state.clients,
+      suppliers: state.suppliers,
+      sales: state.sales,
+      purchases: state.purchases,
+      movements: state.movements,
+      accounts: state.accounts,
+      transfers: state.transfers,
+      exportDate: new Date().toISOString(),
+    };
+
+    const fileName = `autoparts-backup-${new Date().toISOString().split('T')[0]}.json`;
+    const filePath = path.join(BACKUP_DIR, fileName);
+
+    writeFile(filePath, JSON.stringify(payload, null, 2), (err) => {
+      if (err) {
+        console.error('Auto-backup failed:', err);
+      } else {
+        console.log('Auto-backup saved to:', filePath);
+      }
+    });
+  } catch (e) {
+    console.error('Error during auto-backup:', e);
+  }
+}
+
+// Subscribe to all changes in the store
+useStore.subscribe((state) => {
+  saveBackup(state);
+});
+// ==================== END AUTO-BACKUP LOGIC ====================
