@@ -459,7 +459,7 @@ export const useStore = create<Store>()(
         // Emit auto-backup event
         setTimeout(() => {
           try { backupEmitter.emit('backup', getBackupData()) } catch (err) { console.error('Backup emit error', err) }
-        }, 0);
+        }, 0)
     return {
           products: [...state.products, { ...product, id }],
         });
