@@ -1027,15 +1027,19 @@ fetchLatestBackup((data) => {
 });
 
 
-// ====================== AUTO-BACKUP LOGIC ======================
-import { writeFile } from 'fs';
-import path from 'path';
+// ====================== AUTO-BACKUP LOGIC (Browser-safe) ======================
 
-// Path to backup folder
-const BACKUP_DIR = 'D:\\autoparts-backup';
+// Keep a reference to backup directory handle (set by UI like settings-module.tsx)
+let globalBackupDirHandle: FileSystemDirectoryHandle | null = null;
 
-// Function to save backup file
-function saveBackup(state: any) {
+// Allow UI to set backup folder from anywhere
+export function setGlobalBackupDirHandle(handle: FileSystemDirectoryHandle) {
+  globalBackupDirHandle = handle;
+}
+
+// Function to save backup file using File System Access API
+async function saveBackupBrowser(state: any) {
+  if (!globalBackupDirHandle) return;
   try {
     const payload = {
       products: state.products,
@@ -1050,22 +1054,18 @@ function saveBackup(state: any) {
     };
 
     const fileName = `autoparts-backup-${new Date().toISOString().split('T')[0]}.json`;
-    const filePath = path.join(BACKUP_DIR, fileName);
-
-    writeFile(filePath, JSON.stringify(payload, null, 2), (err) => {
-      if (err) {
-        console.error('Auto-backup failed:', err);
-      } else {
-        console.log('Auto-backup saved to:', filePath);
-      }
-    });
+    const fileHandle = await globalBackupDirHandle.getFileHandle(fileName, { create: true });
+    const writable = await fileHandle.createWritable();
+    await writable.write(JSON.stringify(payload, null, 2));
+    await writable.close();
+    console.log("Auto-backup saved:", fileName);
   } catch (e) {
-    console.error('Error during auto-backup:', e);
+    console.error("Error during auto-backup (browser):", e);
   }
 }
 
-// Subscribe to all changes in the store
+// Subscribe to store changes
 useStore.subscribe((state) => {
-  saveBackup(state);
+  saveBackupBrowser(state);
 });
 // ==================== END AUTO-BACKUP LOGIC ====================
