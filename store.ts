@@ -411,7 +411,6 @@ const defaultUsers: User[] = [
   },
 ]
 
-
 // Generate JSON backup of current state
 const getBackupData = () => {
   const data = {
@@ -428,7 +427,6 @@ const getBackupData = () => {
   }
   return JSON.stringify(data, null, 2)
 }
-
 
 export const useStore = create<Store>()(
   persist(
@@ -451,15 +449,14 @@ export const useStore = create<Store>()(
       backupDirHandle: null,
       setBackupDirHandle: (handle: FSDirHandle) => set({ backupDirHandle: handle }),
 
-
       // Actions pour les produits
       addProduct: (product) => {
         const id = Date.now().toString()
-        set((state) => ({
         // Emit auto-backup event
         setTimeout(() => {
           try { backupEmitter.emit('backup', getBackupData()) } catch (err) { console.error('Backup emit error', err) }
         }, 0);
+        set((state) => ({
           products: [...state.products, { ...product, id }],
         }))
       },
@@ -553,12 +550,11 @@ export const useStore = create<Store>()(
                   quantite_disponible: product.quantite_disponible + purchaseItem.quantite,
                   valeur_stock: (product.quantite_disponible + purchaseItem.quantite) * product.prix_achat_ht,
                 };
-      triggerBackup(get, updated);
-      return updated
+                triggerBackup(get, updated);
+                return updated
               }
               return product
-            
-    })
+            })
 
             const stockMovements = purchase.items.map((item) => ({
               id: `purchase_${id}_${item.produit_id}`,
@@ -600,12 +596,11 @@ export const useStore = create<Store>()(
                   quantite_disponible: product.quantite_disponible + purchaseItem.quantite,
                   valeur_stock: (product.quantite_disponible + purchaseItem.quantite) * product.prix_achat_ht,
                 };
-      triggerBackup(get, updated);
-      return updated
+                triggerBackup(get, updated);
+                return updated
               }
               return product
-            
-    })
+            })
 
             const stockMovements = existingPurchase.items.map((item) => ({
               id: `purchase_update_${id}_${item.produit_id}_${Date.now()}`,
@@ -672,12 +667,11 @@ export const useStore = create<Store>()(
                   valeur_stock:
                     Math.max(0, product.quantite_disponible - purchaseItem.quantite) * product.prix_achat_ht,
                 };
-      triggerBackup(get, updated);
-      return updated
+                triggerBackup(get, updated);
+                return updated
               }
               return product
-            
-    })
+            })
 
             const reverseMovements = purchase.items.map((item) => ({
               id: `purchase_delete_${id}_${item.produit_id}_${Date.now()}`,
@@ -714,12 +708,11 @@ export const useStore = create<Store>()(
                 ...product,
                 quantite_disponible: Math.max(0, product.quantite_disponible - saleItem.quantite),
               };
-      triggerBackup(get, updated);
-      return updated
+              triggerBackup(get, updated);
+              return updated
             }
             return product
-          
-    })
+          })
 
           const newMovements = sale.items.map((item) => ({
             id: `${Date.now()}-${item.produit_id}`,
@@ -752,12 +745,11 @@ export const useStore = create<Store>()(
                 ...product,
                 quantite_disponible: product.quantite_disponible + saleItem.quantite,
               };
-      triggerBackup(get, updated);
-      return updated
+              triggerBackup(get, updated);
+              return updated
             }
             return product
-          
-    })
+          })
 
           const restockMovements = sale.items.map((item) => ({
             id: `restock_${Date.now()}_${item.produit_id}`,
@@ -790,12 +782,11 @@ export const useStore = create<Store>()(
                 ...product,
                 quantite_disponible: product.quantite_disponible + originalItem.quantite,
               };
-      triggerBackup(get, updated);
-      return updated
+              triggerBackup(get, updated);
+              return updated
             }
             return product
-          
-    })
+          })
 
           if (updates.items) {
             updatedProducts = updatedProducts.map((product) => {
@@ -873,17 +864,16 @@ export const useStore = create<Store>()(
           const updatedAccounts = state.accounts.map((account) => {
             if (account.id === fromAccountId) {
               const updated = { ...account, balance: account.balance - amount };
-      triggerBackup(get, updated);
-      return updated
+              triggerBackup(get, updated);
+              return updated
             }
             if (account.id === toAccountId) {
               const updated = { ...account, balance: account.balance + amount };
-      triggerBackup(get, updated);
-      return updated
+              triggerBackup(get, updated);
+              return updated
             }
             return account
-          
-    })
+          })
 
           return {
             accounts: updatedAccounts,
@@ -1002,7 +992,6 @@ export const useStore = create<Store>()(
   ),
 )
 
-
 // BACKUP: auto backup helper
 async function autoBackup(getState: () => any) {
   const {
@@ -1055,7 +1044,6 @@ fetchLatestBackup((data) => {
     console.error('❌ Failed to update store with latest backup:', err);
   }
 });
-
 
 // ====================== AUTO-BACKUP LOGIC (Browser-safe) ======================
 
