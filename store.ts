@@ -456,80 +456,78 @@ export const useStore = create<Store>()(
       addProduct: (product) => {
         const id = Date.now().toString()
         set((state) => {
-        // Emit auto-backup event
-        setTimeout(() => {
-          try { backupEmitter.emit('backup', getBackupData()) } catch (err) { console.error('Backup emit error', err) }
-        }, 0)
-    return {
-          products: [...state.products, { ...product, id }],
-        });
+          // Emit auto-backup event
+          setTimeout(() => {
+            try { backupEmitter.emit('backup', getBackupData()) } catch (err) { console.error('Backup emit error', err) }
+          }, 0)
+          return {
+            products: [...state.products, { ...product, id }],
+          }
+        })
       },
 
       updateProduct: (id, updates) => {
-        set((state) => {
-    return {
+        set((state) => ({
           products: state.products.map((p) => (p.id === id ? { ...p, ...updates } : p)),
-        });
+        }))
       },
 
       deleteProduct: (id) => {
-        set((state) => {
-    return {
+        set((state) => ({
           products: state.products.filter((p) => p.id !== id),
-        });
+        }))
       },
 
       replaceAllProducts: (newProducts) => {
         const productsWithIds = newProducts.map((product, index) => ({
           ...product,
           id: `imported_${Date.now()}_${index}`,
-        });
-
+        }))
         set(() => ({
           products: productsWithIds,
           movements: [],
           sales: [],
-        });
+        }))
       },
 
       // Actions pour les clients
       addClient: (client) => {
         const id = Date.now().toString()
-        set((state) => {
+        set((state) => ({
           clients: [...state.clients, { ...client, id }],
-        });
+        }))
       },
 
       updateClient: (id, updates) => {
-        set((state) => {
+        set((state) => ({
           clients: state.clients.map((c) => (c.id === id ? { ...c, ...updates } : c)),
-        });
+        }))
       },
 
       deleteClient: (id) => {
-        set((state) => {
+        set((state) => ({
           clients: state.clients.filter((c) => c.id !== id),
-        });
+        }))
       },
 
       // Actions pour les fournisseurs
       addSupplier: (supplier) => {
         const id = Date.now().toString()
-        set((state) => {
+        set((state) => ({
           suppliers: [...state.suppliers, { ...supplier, id }],
-        });
+        }))
       },
 
       updateSupplier: (id, updates) => {
-        set((state) => {
+        set((state) => ({
           suppliers: state.suppliers.map((s) => (s.id === id ? { ...s, ...updates } : s)),
-        });
+        }))
       },
 
       deleteSupplier: (id) => {
-        set((state) => {
+        set((state) => ({
           suppliers: state.suppliers.filter((s) => s.id !== id),
-        });
+        }))
       },
 
       // Actions pour les achats
@@ -567,7 +565,7 @@ export const useStore = create<Store>()(
               date: purchase.date,
               commentaire: `Réception commande #${id}`,
               reference_document: `BR${id}`,
-            });
+            }))
 
             newMovements = [...state.movements, ...stockMovements]
           }
@@ -610,7 +608,7 @@ export const useStore = create<Store>()(
               date: updates.date || existingPurchase.date,
               commentaire: `Réception commande #${id} (mise à jour)`,
               reference_document: `BR${id}`,
-            });
+            }))
 
             newMovements = [...state.movements, ...stockMovements]
           } else if (existingPurchase.statut === "Reçu" && updates.statut !== "Reçu") {
@@ -635,7 +633,7 @@ export const useStore = create<Store>()(
               date: new Date().toISOString().split("T")[0],
               commentaire: `Annulation réception commande #${id}`,
               reference_document: `ANN-BR${id}`,
-            });
+            }))
 
             newMovements = [...state.movements, ...reverseMovements]
           }
@@ -678,7 +676,7 @@ export const useStore = create<Store>()(
               date: new Date().toISOString().split("T")[0],
               commentaire: `Suppression commande #${id}`,
               reference_document: `SUPP-BR${id}`,
-            });
+            }))
 
             newMovements = [...state.movements, ...reverseMovements]
           }
@@ -716,7 +714,7 @@ export const useStore = create<Store>()(
             date: sale.date,
             commentaire: `Vente #${id}`,
             reference_document: id,
-          });
+          }))
 
           return {
             sales: [...state.sales, newSale],
@@ -750,7 +748,7 @@ export const useStore = create<Store>()(
             date: new Date().toISOString().split("T")[0],
             commentaire: `Suppression vente #${id} - Restitution stock`,
             reference_document: `Suppr-${id}`,
-          });
+          }))
 
           return {
             sales: state.sales.filter((s) => s.id !== id),
@@ -800,7 +798,7 @@ export const useStore = create<Store>()(
               date: updates.date || existingSale.date,
               commentaire: `Vente modifiée #${id}`,
               reference_document: id,
-            });
+            }))
 
             newMovements = [...newMovements, ...updateMovements]
           }
@@ -816,29 +814,29 @@ export const useStore = create<Store>()(
       // Actions pour les mouvements
       addMovement: (movement) => {
         const id = Date.now().toString()
-        set((state) => {
+        set((state) => ({
           movements: [...state.movements, { ...movement, id }],
-        });
+        }))
       },
 
       // Actions pour les comptes
       addAccount: (account) => {
         const id = Date.now().toString()
-        set((state) => {
+        set((state) => ({
           accounts: [...state.accounts, { ...account, id }],
-        });
+        }))
       },
 
       updateAccount: (id, updates) => {
-        set((state) => {
+        set((state) => ({
           accounts: state.accounts.map((a) => (a.id === id ? { ...a, ...updates } : a)),
-        });
+        }))
       },
 
       deleteAccount: (id) => {
-        set((state) => {
+        set((state) => ({
           accounts: state.accounts.filter((a) => a.id !== id),
-        });
+        }))
       },
 
       transferBetweenAccounts: (transfer) => {
@@ -877,13 +875,13 @@ export const useStore = create<Store>()(
         console.log("All users:", get().users) // Debug log
 
         if (user) {
-          set((state) => {
+          set((state) => ({
             auth: {
               isAuthenticated: true,
               currentUser: user,
             },
             users: state.users.map((u) => (u.id === user.id ? { ...u, last_login: new Date().toISOString() } : u)),
-          });
+          }))
           return true
         }
         return false
@@ -895,7 +893,7 @@ export const useStore = create<Store>()(
             isAuthenticated: false,
             currentUser: null,
           },
-        });
+        }))
       },
 
       addUser: (user) => {
@@ -905,21 +903,21 @@ export const useStore = create<Store>()(
           id,
           created_date: new Date().toISOString().split("T")[0],
         }
-        set((state) => {
+        set((state) => ({
           users: [...state.users, newUser],
-        });
+        }))
       },
 
       updateUser: (id, updates) => {
-        set((state) => {
+        set((state) => ({
           users: state.users.map((u) => (u.id === id ? { ...u, ...updates } : u)),
-        });
+        }))
       },
 
       deleteUser: (id) => {
-        set((state) => {
+        set((state) => ({
           users: state.users.filter((u) => u.id !== id),
-        });
+        }))
       },
 
       hasPermission: (permission) => {
@@ -940,7 +938,7 @@ export const useStore = create<Store>()(
           movements: [],
           accounts: [],
           transfers: [],
-        });
+        }))
       },
 
       importAllData: (data) => {
@@ -953,7 +951,7 @@ export const useStore = create<Store>()(
           movements: data.movements || [],
           accounts: data.accounts || [],
           transfers: data.transfers || [],
-        });
+        }))
       },
 
       // Utilitaires
