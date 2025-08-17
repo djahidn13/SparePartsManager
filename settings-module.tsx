@@ -25,6 +25,61 @@ import { AlertTriangle, CheckCircle, Clock, Database, Download, Edit, Eye, EyeOf
 import { useStore } from "@/store"
 import { supabase } from '@/lib/supabaseClient'
 
+// --- Backup Helpers ---
+import { createClient } from '@supabase/supabase-js'
+import { useStore } from './store'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
+
+const generateBackupJSON = (state: any) => {
+  const data = {
+    products: state.products,
+    clients: state.clients,
+    suppliers: state.suppliers,
+    sales: state.sales,
+    purchases: state.purchases,
+    movements: state.movements,
+    accounts: state.accounts,
+    transfers: state.transfers,
+    users: state.users,
+    exportDate: new Date().toISOString(),
+  }
+  return JSON.stringify(data, null, 2)
+}
+
+const saveBackupLocal = (json: string) => {
+  const blob = new Blob([json], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `autoparts-backup-${new Date().toISOString().split('T')[0]}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+const uploadBackupSupabase = async (json: string) => {
+  const fileName = `autoparts-backup-${new Date().toISOString().split('T')[0]}.json`
+  const { error } = await supabase.from('app_backups').insert({
+    filename: fileName,
+    data: json,
+    created_at: new Date().toISOString(),
+  })
+  if (error) console.error('Supabase backup error:', error)
+}
+
+// Trigger manual backup (local + supabase)
+export const triggerManualBackup = async () => {
+  const state = useStore.getState()
+  const json = generateBackupJSON(state)
+  saveBackupLocal(json)
+  await uploadBackupSupabase(json)
+  alert('✅ Backup exported locally & to Supabase.')
+}
+
+
 export default function SettingsModule() {
   const {
     products,
