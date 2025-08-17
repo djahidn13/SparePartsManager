@@ -26,14 +26,6 @@ import { useStore } from "@/store"
 import { supabase } from '@/lib/supabaseClient'
 
 // --- Backup Helpers ---
-import { createClient } from '@supabase/supabase-js'
-import { useStore } from './store'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
-
 const generateBackupJSON = (state: any) => {
   const data = {
     products: state.products,
@@ -78,7 +70,6 @@ export const triggerManualBackup = async () => {
   await uploadBackupSupabase(json)
   alert('✅ Backup exported locally & to Supabase.')
 }
-
 
 export default function SettingsModule() {
   const {
@@ -178,7 +169,6 @@ export default function SettingsModule() {
     writeAutoBackup()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [products, clients, suppliers, sales, purchases, movements, accounts, transfers, backupDirHandle])
-
 
   // Security settings state (admin only)
   const [securitySettings, setSecuritySettings] = useState({
