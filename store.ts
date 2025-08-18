@@ -3,27 +3,83 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import { supabase } from '@/lib/supabaseClient'
+// BACKUP: File System handle type (fallback)
+type FSDirHandle = any
+
 // Fetch latest backup from Supabase on startup
 async function fetchLatestBackup(importAllData: (data: any) => void) {
-  try {
-    const { data, error } = await supabase
-      .from('app_backups')
-      .select('data')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single()
+  // Load only on client
+  if (typeof window === 'undefined') return
 
-    if (error) {
-      console.error('❌ Error fetching backup from Supabase:', error)
+  const CLOUD_LOAD_TIMEOUT_MS = 10000
+  const MAX_RETRIES = 2
+
+  const withTimeout = <T,>(p: Promise<T>, ms: number) =>
+    new Promise<T>((resolve, reject) => {
+      const t = setTimeout(() => reject(new Error('Supabase load timed out')), ms)
+      p.then((v) => { clearTimeout(t); resolve(v) }).catch((e) => { clearTimeout(t); reject(e) })
+    })
+
+  const sanitize = (payload: any, current: Store): Partial<Store> => {
+    const safeArray = (v: any) => Array.isArray(v) ? v : []
+    return {
+      products: safeArray(payload?.products) ?? current.products,
+      clients: safeArray(payload?.clients) ?? current.clients,
+      suppliers: safeArray(payload?.suppliers) ?? current.suppliers,
+      sales: safeArray(payload?.sales) ?? current.sales,
+      purchases: safeArray(payload?.purchases) ?? current.purchases,
+      movements: safeArray(payload?.movements) ?? current.movements,
+      accounts: safeArray(payload?.accounts) ?? current.accounts,
+      transfers: safeArray(payload?.transfers) ?? current.transfers,
+      users: safeArray(payload?.users) ?? current.users,
+    }
+  }
+
+  let attempt = 0
+  while (attempt <= MAX_RETRIES) {
+    try {
+      attempt++
+      const query = supabase
+        .from('app_backups')
+        .select('data, filename, created_at')
+        .order('created_at', { ascending: false })
+        .limit(1)
+
+      const { data, error } = await withTimeout(query, CLOUD_LOAD_TIMEOUT_MS) as any
+      if (error) throw error
+
+      const row = Array.isArray(data) ? data[0] : null
+      if (!row) {
+        console.warn('[store] No cloud backup row found, keeping local defaults.')
+        return
+      }
+
+      let payload = row.data
+      // Accept either JSON string or object
+      if (typeof payload === 'string') {
+        try {
+          payload = JSON.parse(payload)
+        } catch (e) {
+          console.error('[store] Failed to parse backup JSON string, keeping local defaults.', e)
+          return
+        }
+      }
+
+      const current = useStore.getState()
+      const cleaned = sanitize(payload, current)
+      importAllData(cleaned)
+      console.info('[store] Cloud backup loaded:', row.filename || row.created_at)
+
       return
+    } catch (err) {
+      console.error(`[store] Cloud load attempt ${attempt} failed`, err)
+      if (attempt > MAX_RETRIES) {
+        console.error('[store] Giving up loading from cloud; app will use local defaults / persisted data.')
+        return
+      }
+      // small backoff
+      await new Promise((r) => setTimeout(r, 400 * attempt))
     }
-
-    if (data?.data) {
-      importAllData(data.data)
-      console.log('✅ Data loaded from latest Supabase backup')
-    }
-  } catch (err) {
-    console.error('❌ Unexpected error fetching backup:', err)
   }
 }
 
@@ -154,6 +210,10 @@ interface Store {
   transfers: Transfer[]
   users: User[]
   auth: AuthState
+
+  // BACKUP
+  backupDirHandle: FSDirHandle | null
+  setBackupDirHandle: (handle: FSDirHandle) => void
 
   // Actions pour les produits
   addProduct: (product: Omit<Product, "id">) => void
@@ -404,6 +464,25 @@ const defaultUsers: User[] = [
   },
 ]
 
+
+// Generate JSON backup of current state
+const getBackupData = () => {
+  const data = {
+    products: get().products,
+    clients: get().clients,
+    suppliers: get().suppliers,
+    sales: get().sales,
+    purchases: get().purchases,
+    movements: get().movements,
+    accounts: get().accounts,
+    transfers: get().transfers,
+    users: get().users,
+    exportDate: new Date().toISOString(),
+  }
+  return JSON.stringify(data, null, 2)
+}
+
+
 export const useStore = create<Store>()(
   persist(
     (set, get) => ({
@@ -421,12 +500,25 @@ export const useStore = create<Store>()(
         currentUser: null,
       },
 
+      // BACKUP
+      backupDirHandle: null,
+      setBackupDirHandle: (handle: FSDirHandle) => set({ backupDirHandle: handle }),
+
+
       // Actions pour les produits
       addProduct: (product) => {
         const id = Date.now().toString()
-        set((state) => ({
-          products: [...state.products, { ...product, id }],
-        }))
+        set((state) => {
+        // Emit auto-backup event (fixed)
+        try {
+          setTimeout(() => {
+            try { backupEmitter.emit('backup', getBackupData()) } catch (err) { console.error('Backup emit error', err) }
+          }, 0)
+        } catch (e) { console.error('Backup emit setup error', e) }
+        return {
+products: [...state.products, { ...product, id }],
+        }
+      })
       },
 
       updateProduct: (id, updates) => {
@@ -936,3 +1028,57 @@ export const useStore = create<Store>()(
     },
   ),
 )
+
+
+// BACKUP: auto backup helper
+async function autoBackup(getState: () => any) {
+  const {
+    backupDirHandle,
+    products, clients, suppliers, sales, purchases, movements, accounts, transfers, users, auth
+  } = getState();
+  if (!backupDirHandle) return;
+  if (!(auth && auth.currentUser && auth.currentUser.role === 'admin')) return;
+
+  try {
+    const payload = {
+      products, clients, suppliers, sales, purchases, movements, accounts, transfers, users,
+      exportDate: new Date().toISOString(),
+    };
+    const fileName = `autoparts-backup-${new Date().toISOString().split("T")[0]}.json`;
+    const fileHandle = await backupDirHandle.getFileHandle(fileName, { create: true });
+    const writable = await fileHandle.createWritable();
+    await writable.write(JSON.stringify(payload, null, 2));
+    await writable.close();
+    console.log("💾 Auto-backup écrit:", fileName);
+  } catch (err) {
+    console.error("❌ Auto-backup error:", err);
+  }
+}
+
+// BACKUP: subscribe to state changes on client to trigger backups
+if (typeof window !== "undefined") {
+  const selectData = (s: any) => ({
+    products: s.products,
+    clients: s.clients,
+    suppliers: s.suppliers,
+    sales: s.sales,
+    purchases: s.purchases,
+    movements: s.movements,
+    accounts: s.accounts,
+    transfers: s.transfers,
+  });
+  useStore.subscribe(selectData, () => {
+    autoBackup(useStore.getState);
+  });
+}
+
+// Auto-refresh: fetch latest backup on app start
+fetchLatestBackup((data) => {
+  // Overwrite persisted state with latest Supabase data
+  try {
+    useStore.setState({ ...useStore.getState(), ...data });
+    console.log('🔄 Store updated with latest backup');
+  } catch (err) {
+    console.error('❌ Failed to update store with latest backup:', err);
+  }
+});
