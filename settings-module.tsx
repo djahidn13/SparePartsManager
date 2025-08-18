@@ -803,6 +803,7 @@ export default function SettingsModule() {
   // Auto-upload every hour if admin
   useEffect(() => {
     if (isAdmin) {
+      const interval = setInterval(() => {
         handleExportData()
       }, 60 * 60 * 1000)
       return () => clearInterval(interval)
