@@ -3,9 +3,6 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import { supabase } from '@/lib/supabaseClient'
-// BACKUP: File System handle type (fallback)
-type FSDirHandle = any
-
 // Fetch latest backup from Supabase on startup
 async function fetchLatestBackup(importAllData: (data: any) => void) {
   try {
@@ -157,10 +154,6 @@ interface Store {
   transfers: Transfer[]
   users: User[]
   auth: AuthState
-
-  // BACKUP
-  backupDirHandle: FSDirHandle | null
-  setBackupDirHandle: (handle: FSDirHandle) => void
 
   // Actions pour les produits
   addProduct: (product: Omit<Product, "id">) => void
@@ -411,23 +404,6 @@ const defaultUsers: User[] = [
   },
 ]
 
-// Generate JSON backup of current state
-const getBackupData = () => {
-  const data = {
-    products: get().products,
-    clients: get().clients,
-    suppliers: get().suppliers,
-    sales: get().sales,
-    purchases: get().purchases,
-    movements: get().movements,
-    accounts: get().accounts,
-    transfers: get().transfers,
-    users: get().users,
-    exportDate: new Date().toISOString(),
-  }
-  return JSON.stringify(data, null, 2)
-}
-
 export const useStore = create<Store>()(
   persist(
     (set, get) => ({
@@ -445,17 +421,9 @@ export const useStore = create<Store>()(
         currentUser: null,
       },
 
-      // BACKUP
-      backupDirHandle: null,
-      setBackupDirHandle: (handle: FSDirHandle) => set({ backupDirHandle: handle }),
-
       // Actions pour les produits
       addProduct: (product) => {
         const id = Date.now().toString()
-        // Emit auto-backup event
-        setTimeout(() => {
-          try { backupEmitter.emit('backup', getBackupData()) } catch (err) { console.error('Backup emit error', err) }
-        }, 0);
         set((state) => ({
           products: [...state.products, { ...product, id }],
         }))
@@ -537,7 +505,6 @@ export const useStore = create<Store>()(
         }
 
         set((state) => {
-
           let updatedProducts = state.products
           let newMovements = state.movements
 
@@ -545,13 +512,11 @@ export const useStore = create<Store>()(
             updatedProducts = state.products.map((product) => {
               const purchaseItem = purchase.items.find((item) => item.produit_id === product.id)
               if (purchaseItem) {
-                const updated = {
+                return {
                   ...product,
                   quantite_disponible: product.quantite_disponible + purchaseItem.quantite,
                   valeur_stock: (product.quantite_disponible + purchaseItem.quantite) * product.prix_achat_ht,
-                };
-                triggerBackup(get, updated);
-                return updated
+                }
               }
               return product
             })
@@ -579,7 +544,6 @@ export const useStore = create<Store>()(
 
       updatePurchase: (id, updates) => {
         set((state) => {
-
           const existingPurchase = state.purchases.find((p) => p.id === id)
           if (!existingPurchase) return state
 
@@ -591,13 +555,11 @@ export const useStore = create<Store>()(
             updatedProducts = state.products.map((product) => {
               const purchaseItem = existingPurchase.items.find((item) => item.produit_id === product.id)
               if (purchaseItem) {
-                const updated = {
+                return {
                   ...product,
                   quantite_disponible: product.quantite_disponible + purchaseItem.quantite,
                   valeur_stock: (product.quantite_disponible + purchaseItem.quantite) * product.prix_achat_ht,
-                };
-                triggerBackup(get, updated);
-                return updated
+                }
               }
               return product
             })
@@ -653,7 +615,6 @@ export const useStore = create<Store>()(
         if (!purchase) return
 
         set((state) => {
-
           let updatedProducts = state.products
           let newMovements = state.movements
 
@@ -661,14 +622,12 @@ export const useStore = create<Store>()(
             updatedProducts = state.products.map((product) => {
               const purchaseItem = purchase.items.find((item) => item.produit_id === product.id)
               if (purchaseItem) {
-                const updated = {
+                return {
                   ...product,
                   quantite_disponible: Math.max(0, product.quantite_disponible - purchaseItem.quantite),
                   valeur_stock:
                     Math.max(0, product.quantite_disponible - purchaseItem.quantite) * product.prix_achat_ht,
-                };
-                triggerBackup(get, updated);
-                return updated
+                }
               }
               return product
             })
@@ -700,16 +659,13 @@ export const useStore = create<Store>()(
         const newSale = { ...sale, id }
 
         set((state) => {
-
           const updatedProducts = state.products.map((product) => {
             const saleItem = sale.items.find((item) => item.produit_id === product.id)
             if (saleItem) {
-              const updated = {
+              return {
                 ...product,
                 quantite_disponible: Math.max(0, product.quantite_disponible - saleItem.quantite),
-              };
-              triggerBackup(get, updated);
-              return updated
+              }
             }
             return product
           })
@@ -737,16 +693,13 @@ export const useStore = create<Store>()(
         if (!sale) return
 
         set((state) => {
-
           const updatedProducts = state.products.map((product) => {
             const saleItem = sale.items.find((item) => item.produit_id === product.id)
             if (saleItem) {
-              const updated = {
+              return {
                 ...product,
                 quantite_disponible: product.quantite_disponible + saleItem.quantite,
-              };
-              triggerBackup(get, updated);
-              return updated
+              }
             }
             return product
           })
@@ -774,16 +727,13 @@ export const useStore = create<Store>()(
         if (!existingSale) return
 
         set((state) => {
-
           let updatedProducts = state.products.map((product) => {
             const originalItem = existingSale.items.find((item) => item.produit_id === product.id)
             if (originalItem) {
-              const updated = {
+              return {
                 ...product,
                 quantite_disponible: product.quantite_disponible + originalItem.quantite,
-              };
-              triggerBackup(get, updated);
-              return updated
+              }
             }
             return product
           })
@@ -860,17 +810,12 @@ export const useStore = create<Store>()(
         if (fromAccountId === toAccountId) return
 
         set((state) => {
-
           const updatedAccounts = state.accounts.map((account) => {
             if (account.id === fromAccountId) {
-              const updated = { ...account, balance: account.balance - amount };
-              triggerBackup(get, updated);
-              return updated
+              return { ...account, balance: account.balance - amount }
             }
             if (account.id === toAccountId) {
-              const updated = { ...account, balance: account.balance + amount };
-              triggerBackup(get, updated);
-              return updated
+              return { ...account, balance: account.balance + amount }
             }
             return account
           })
@@ -991,99 +936,3 @@ export const useStore = create<Store>()(
     },
   ),
 )
-
-// BACKUP: auto backup helper
-async function autoBackup(getState: () => any) {
-  const {
-    backupDirHandle,
-    products, clients, suppliers, sales, purchases, movements, accounts, transfers, users, auth
-  } = getState();
-  if (!backupDirHandle) return;
-  if (!(auth && auth.currentUser && auth.currentUser.role === 'admin')) return;
-
-  try {
-    const payload = {
-      products, clients, suppliers, sales, purchases, movements, accounts, transfers, users,
-      exportDate: new Date().toISOString(),
-    };
-    const fileName = `autoparts-backup-${new Date().toISOString().split("T")[0]}.json`;
-    const fileHandle = await backupDirHandle.getFileHandle(fileName, { create: true });
-    const writable = await fileHandle.createWritable();
-    await writable.write(JSON.stringify(payload, null, 2));
-    await writable.close();
-    console.log("💾 Auto-backup écrit:", fileName);
-  } catch (err) {
-    console.error("❌ Auto-backup error:", err);
-  }
-}
-
-// BACKUP: subscribe to state changes on client to trigger backups
-if (typeof window !== "undefined") {
-  const selectData = (s: any) => ({
-    products: s.products,
-    clients: s.clients,
-    suppliers: s.suppliers,
-    sales: s.sales,
-    purchases: s.purchases,
-    movements: s.movements,
-    accounts: s.accounts,
-    transfers: s.transfers,
-  });
-  useStore.subscribe(selectData, () => {
-    autoBackup(useStore.getState);
-  });
-}
-
-// Auto-refresh: fetch latest backup on app start
-fetchLatestBackup((data) => {
-  // Overwrite persisted state with latest Supabase data
-  try {
-    useStore.setState({ ...useStore.getState(), ...data });
-    console.log('🔄 Store updated with latest backup');
-  } catch (err) {
-    console.error('❌ Failed to update store with latest backup:', err);
-  }
-});
-
-// ====================== AUTO-BACKUP LOGIC (Browser-safe) ======================
-
-// Keep a reference to backup directory handle (set by UI like settings-module.tsx)
-let globalBackupDirHandle: FileSystemDirectoryHandle | null = null;
-
-// Allow UI to set backup folder from anywhere
-export function setGlobalBackupDirHandle(handle: FileSystemDirectoryHandle) {
-  globalBackupDirHandle = handle;
-}
-
-// Function to save backup file using File System Access API
-async function saveBackupBrowser(state: any) {
-  if (!globalBackupDirHandle) return;
-  try {
-    const payload = {
-      products: state.products,
-      clients: state.clients,
-      suppliers: state.suppliers,
-      sales: state.sales,
-      purchases: state.purchases,
-      movements: state.movements,
-      accounts: state.accounts,
-      transfers: state.transfers,
-      exportDate: new Date().toISOString(),
-    };
-
-    const fileName = `autoparts-backup-${new Date().toISOString().split('T')[0]}.json`;
-    const fileHandle = await globalBackupDirHandle.getFileHandle(fileName, { create: true });
-    const writable = await fileHandle.createWritable();
-    await writable.write(JSON.stringify(payload, null, 2));
-    await writable.close();
-    console.log("Auto-backup saved:", fileName);
-  } catch (e) {
-    console.error("Error during auto-backup (browser):", e);
-  }
-}
-
-// Subscribe to store changes
-useStore.subscribe((state) => {
-  saveBackupBrowser(state);
-});
-// ==================== END AUTO-BACKUP LOGIC ====================
